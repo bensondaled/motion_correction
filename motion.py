@@ -42,10 +42,11 @@ def motion_correct(mov, max_iters=1, shift_threshold=1., in_place=True, verbose=
 
     # combine values from iterations
     all_vals = np.array(all_vals)
-    all_vals[:,[0,1]] = all_vals[:,[0,1]].sum(axis=0)
-    all_vals[:,2] = all_vals[:,2].mean(axis=0)
+    return_vals = np.empty([all_vals.shape[1],all_vals.shape[2]])
+    return_vals[:,[0,1]] = all_vals[:,:,[0,1]].sum(axis=0)
+    return_vals[:,2] = all_vals[:,:,2].mean(axis=0)
 
-    return mov,template,all_vals
+    return mov,template,return_vals
 
 
 def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=False, in_place=False):
@@ -116,7 +117,7 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
         reslice : slice
             used to reslice movie, example: slice(1,None,2) gives every other frame starting from 2nd frame
         resample : int
-            average over n frames in boxcar before running template operation
+            average over n frames in nonoverlapping windows before running template operation
         symmetrize : bool
             enforces that for a given axis (x,y), max(shifts) = |min(shifts)|
         
