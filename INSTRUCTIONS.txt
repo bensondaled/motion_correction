@@ -1,0 +1,47 @@
+March 29 2016
+Ben Deverett
+deverett@princeton.edu
+
+This package was put together to enable simple Python-based motion correction on the spock cluster.
+There are 3 main steps required to run the pipeline:
+(1) Install the proper Python environment into your user account
+(2) Set your job-specific parameters
+(3) Submit the motion correction job to the cluster
+Below, these steps are detailed at a basic level, such that they are hopefully accessible to anyone.
+
+STEP 1: Installing a Python environment
+---------------------------------------
+-From your terminal (unix) or SSH client of choice (windows or unix), SSH into spock:
+    ssh <my_username>@spock.pni.princeton.edu <Enter>
+    If you are not successful in logging in, it's likely because you have not yet set up a PNI computing account. Email pnihelp@princeton.edu and they will set it up.
+-Once logged into spock, you will be in your home directory. You can use the "ls" command to see what's there.
+-Activate the Python module on the cluster:
+    module load anacondapy/2.7
+-Create a dedicated Python environment:
+    conda create --name motcor_env anaconda python=2.7 <Enter> <and click Enter whenever prompted with a question>
+    source activate motcor_env <Enter>
+-Install additional necessary packages:
+    conda install opencv <Enter> <and click Enter whenever prompted with a question>
+-All done. A tip: if you ever want to log into spock and use python, you should run these two commands once on spock:
+    module load anacondapy/2.7 <Enter>
+    source activate motcor_env <Enter>
+
+STEP 2: EDITING THE main.py and job.sh FILES
+------------------------------------
+-However you normally interact with bucket, copy the "/wang/deverett/public/motion_correction" folder to an accessible destination of your choice.
+-The only two files that should be touched are main.py and job.sh
+-main.py : the python script that runs the motion correction, and any other python commands you wish to include
+    -Set the input and output paths for your job. By default, this pipeline reads all tif files from a given input directory, and sends all motion-corrected movies to an output directory.
+    -Set any parameters you wish to tune (example: max_shift).
+-job.sh : the script used to submit the python script to the cluster
+    -Insert your email address if you want an email notification when the job is complete (or fails).
+
+STEP 2: Running motion correction
+---------------------------------
+-Log into spock (using the SSH command from step 1), and navigate to the folder you copied. On spock, bucket is called "jukebox," so for example:
+    cd /jukebox/tank/jeff/motion_correction <Enter>
+-Submit the motion correction job to the cluster.
+    sbatch --array=0-100 job.sh <Enter>
+    You can change the number 100 to the number of files in your input directory of tifs. If you put a number smaller than the number of files, it will do the first n files (alphabetical). If you put a larger number, it will still do all of your files.
+-All done. If you set up email notification, you will be notified when the job ends. Otherwise, the command 'squeue' can be used to check the job's status. There will also be minimal information in the log files created in the 'logs' folder. Or you can just wait to see that all your files have shown up.
+-Note: do not modify the contents of your input or output directories while the job is running. This will cause it to do weird things.
