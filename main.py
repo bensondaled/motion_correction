@@ -14,10 +14,14 @@ output_directory    =   '/jukebox/path_to_my_output_folder'    # a folder in whi
 template    =   np.median   # a function used to calculate the template, examples: np.mean, np.median. Beware: median is expensive for large datasets
 max_shift   =   [8, 8]      # maximum shift in pixels allowed in each dimension (y, x)
 crop        =   False       # True / False, whether or not to crop the movie such that borders introduced by motion correction are removed
+shift_threshold = 3.0
+max_iters = 100
+
 
 ### Motion correct ###
 
 # structure params
+correct_params = dict(shift_threshold=shift_threshold, max_iters=max_iters)
 compute_params = dict(template=template, max_shift=max_shift)
 apply_params = dict(crop=crop)
 
@@ -41,6 +45,6 @@ print('Motion correcting file: {}'.format(fname)); sys.stdout.flush()
 
 # load in tif, correct, and save
 mov = imread(path)
-mov_cor, template, vals = motion_correct(mov, compute_kwargs=compute_params, apply_kwargs=apply_params)
+mov_cor, template, vals = motion_correct(mov, compute_kwargs=compute_params, apply_kwargs=apply_params, **correct_params)
 imsave(path_cor, mov_cor)
 print('Done file: {}'.format(fname))

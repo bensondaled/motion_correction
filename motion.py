@@ -2,19 +2,50 @@ import numpy as np
 import cv2
 PF_numeric_types = [int, float, np.float16, np.float32, np.float64, np.float128, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64]
 
-def motion_correct(mov, compute_kwargs, apply_kwargs):
+def motion_correct(mov, max_iters=1, shift_threshold=1., in_place=True, verbose=True, compute_kwargs={}, apply_kwargs={}):
     """Perform motion correction using template matching.
+
+    max_iters : int
+        maximum number of iterations
+    shift_threshold : float
+        absolute max shift value below which to exit
+    in_place : bool
+        perform on same memory as supplied
+    verbose : bool
+        show status
+    compute_kwargs : dict
+        kwargs for compute_motion_correction
+    apply_kwargs : dict
+        kwargs for apply_motion_correction
    
     Returns
     --------
     corrected movie, template, values
 
-    Note that this function is a convenience function for calling compute_motion_correction followed by apply_motion_correction.
+    Note that this function is a convenience function for calling compute_motion_correction followed by apply_motion_correction, multiple times and combining results
     """
-    
-    template,vals = compute_motion(mov, **compute_kwargs)
-    mov_cor = apply_motion_correction(mov, vals, **apply_kwargs)
-    return mov_cor,template,vals
+    if not in_place:
+        mov = mov.copy()
+  
+    all_vals = []
+    for it in range(max_iters):
+        if verbose:
+            print('Iteration {}'.format(it))
+        template,vals = compute_motion(mov, **compute_kwargs)
+        mov = apply_motion_correction(mov, vals, **apply_kwargs)
+        maxshifts = np.abs(vals[:,[0,1]].max(axis=0))
+        all_vals.append(vals)
+        if verbose:
+            print('Shifts: {}'.format(str(maxshifts)))
+        if np.all(maxshifts < shift_threshold):
+            break
+
+    # combine values from iterations
+    all_vals = np.array(all_vals)
+    all_vals[:,[0,1]] = all_vals[:,[0,1]].sum(axis=0)
+    all_vals[:,2] = all_vals[:,2].mean(axis=0)
+
+    return mov,template,all_vals
 
 
 def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=False, in_place=False):
@@ -40,6 +71,8 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=Fa
 
     if shifts.dtype.names:
         shifts = shifts[['y_shift','x_shift']].view((float, 2))
+    elif shifts.shape[-1] == 3:
+        shifts = shifts[:,[0,1]]
 
     if mov.ndim==2:
         mov = mov[None,...]
@@ -67,7 +100,7 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=Fa
 
     return mov.squeeze()
 
-def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_method=cv2.TM_CCORR_NORMED, resample=False):
+def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_method=cv2.TM_CCORR_NORMED, reslice=slice(None,None), resample=1, symmetrize=True):
         """Compute template, shifts, and correlations associated with template-matching-based motion correction
 
         Parameters
@@ -80,8 +113,12 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
             if array, template to be used. if function, that used to compute template (defaults to np.median)
         template_matching_method : opencv constant
             method parameter for cv2.matchTemplate
-        resample : bool
-            if movie has more than 10^8 pixels, randomly resample to find template
+        reslice : slice
+            used to reslice movie, example: slice(1,None,2) gives every other frame starting from 2nd frame
+        resample : int
+            average over n frames in boxcar before running template operation
+        symmetrize : bool
+            enforces that for a given axis (x,y), max(shifts) = |min(shifts)|
         
         Returns
         -------
@@ -92,7 +129,8 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
         """
       
         # Parse movie
-        mov = mov.astype(np.float32)    
+        mov = mov.astype(np.float32)
+        mov = mov[reslice]
         n_frames,h_i, w_i = mov.shape
 
         # Parse max_shift param
@@ -106,14 +144,19 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
        
         # Parse/generate template
         if callable(template):
-            template=template(mov,axis=0)            
+            if resample > 1:
+                resample = int(resample)
+                resampled = np.array([np.mean(mov[i:i+resample], axis=0) for i in np.arange(0,len(mov),resample)])
+            else:
+                resampled = mov
+            template=template(resampled, axis=0)            
         elif not isinstance(template, np.ndarray):
             raise Exception('Template parameter should be an array or function')
         template = template.astype(np.float32)
         template=template[ms_h:h_i-ms_h,ms_w:w_i-ms_w]
         h,w = template.shape
         
-        vals = np.zeros(n_frames, dtype=[('y_shift',np.float),('x_shift',np.float),('metric',np.float)])
+        vals = np.zeros([n_frames,3])
 
         for i,frame in enumerate(mov):
 
@@ -137,6 +180,10 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
                 sh_x_n = -(sh_x - ms_h)
                 sh_y_n = -(sh_y - ms_w)
                     
-            vals[i] = (sh_x_n, sh_y_n, avg_metric)
+            vals[i] = [sh_x_n, sh_y_n, avg_metric]
+
+        if symmetrize:
+            vals[:,[0,1]] -= (vals[:,[0,1]].max(axis=0) + vals[:,[0,1]].min(axis=0)) / 2.
+            assert np.all(np.round(vals[:,[0,1]].max(axis=0),3) == np.round(np.abs(vals[:,[0,1]].min(axis=0)),3))
 
         return template, vals
