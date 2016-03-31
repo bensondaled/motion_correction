@@ -18,10 +18,10 @@ save_vals_func   =     savemat # savemat / np.save / False
 ### Algorithm Parameters ###
 template        =   np.median           # a function used to calculate the template, examples: np.mean, np.median. Beware: median is expensive for large datasets
 max_shift       =   [8, 8]              # maximum shift in pixels allowed in each dimension (y, x)
-reslice         =   slice(None, None)   # take every n, for example slice(1,None,2) takes every 2 starting at 2nd
 resample        =   50                  # nonoverlapping rolling mean of this window size before computing template
 symmetrize      =   True                # True / False
 crop            =   False               # True / False, whether or not to crop the movie such that borders introduced by motion correction are removed
+reslice         =   slice(None, None)   # take every n, for example slice(1,None,2) takes every 2 starting at 2nd
 shift_threshold =   3.0                 # when absolute shifts in both axes are less than this, iterations stop
 max_iters       =   2                   # max number of iterations
 
@@ -29,9 +29,9 @@ max_iters       =   2                   # max number of iterations
 ### Motion correct ###
 
 # structure params
-compute_params = dict(template=template, max_shift=max_shift, reslice=reslice, resample=resample, symmetrize=symmetrize)
-apply_params = dict(crop=crop, reslice=reslice)
-correct_params = dict(shift_threshold=shift_threshold, max_iters=max_iters)
+compute_params = dict(template=template, max_shift=max_shift, resample=resample, symmetrize=symmetrize)
+apply_params = dict(crop=crop)
+correct_params = dict(shift_threshold=shift_threshold, max_iters=max_iters, reslice=reslice)
 
 # determine job id
 jobid = int(sys.argv[1])

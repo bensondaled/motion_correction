@@ -2,13 +2,15 @@ import numpy as np
 import cv2
 PF_numeric_types = [int, float, np.float16, np.float32, np.float64, np.float128, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64]
 
-def motion_correct(mov, max_iters=1, shift_threshold=1., in_place=True, verbose=True, compute_kwargs={}, apply_kwargs={}):
+def motion_correct(mov, max_iters=1, shift_threshold=1., reslice=slice(None,None), in_place=True, verbose=True, compute_kwargs={}, apply_kwargs={}):
     """Perform motion correction using template matching.
 
     max_iters : int
         maximum number of iterations
     shift_threshold : float
         absolute max shift value below which to exit
+    reslice : slice
+        used to reslice movie, example: slice(1,None,2) gives every other frame starting from 2nd frame
     in_place : bool
         perform on same memory as supplied
     verbose : bool
@@ -26,6 +28,7 @@ def motion_correct(mov, max_iters=1, shift_threshold=1., in_place=True, verbose=
     """
     if not in_place:
         mov = mov.copy()
+    mov = mov[reslice]
   
     all_vals = []
     for it in range(max_iters):
@@ -49,7 +52,7 @@ def motion_correct(mov, max_iters=1, shift_threshold=1., in_place=True, verbose=
     return mov,template,return_vals
 
 
-def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, reslice=slice(None,None), crop=False, in_place=False):
+def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=False, in_place=False):
     """Apply shifts to mov in order to correct motion
 
     Parameters
@@ -60,8 +63,6 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, reslice
         obtained from the function compute_motion, list of [x_shift, y_shift] for each frame. if more than 2 columns, assumes first 2 are the desired ones
     interpolation : def
         interpolation flag for cv2.warpAffine, defaults to cv2.INTER_LINEAR
-    reslice : slice
-        used to reslice movie, example: slice(1,None,2) gives every other frame starting from 2nd frame
     crop : bool / int
         whether to crop image to borders of correction. if True, crops to maximum adjustments. if int, crops that number of pixels off all sides
     in_place : bool
@@ -71,8 +72,6 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, reslice
     """
     if not in_place:
         mov=mov.copy()
-
-    mov = mov[reslice]
 
     if shifts.dtype.names:
         shifts = shifts[['y_shift','x_shift']].view((float, 2))
@@ -105,7 +104,7 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, reslice
 
     return mov.squeeze()
 
-def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_method=cv2.TM_CCORR_NORMED, reslice=slice(None,None), resample=1, symmetrize=True):
+def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_method=cv2.TM_CCORR_NORMED, resample=1, symmetrize=True):
         """Compute template, shifts, and correlations associated with template-matching-based motion correction
 
         Parameters
@@ -118,8 +117,6 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
             if array, template to be used. if function, that used to compute template (defaults to np.median)
         template_matching_method : opencv constant
             method parameter for cv2.matchTemplate
-        reslice : slice
-            used to reslice movie, example: slice(1,None,2) gives every other frame starting from 2nd frame
         resample : int
             average over n frames in nonoverlapping windows before running template operation
         symmetrize : bool
@@ -135,7 +132,6 @@ def compute_motion(mov, max_shift=(5,5), template=np.median, template_matching_m
       
         # Parse movie
         mov = mov.astype(np.float32)
-        mov = mov[reslice]
         n_frames,h_i, w_i = mov.shape
 
         # Parse max_shift param
