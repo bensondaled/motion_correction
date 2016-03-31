@@ -1,5 +1,5 @@
 import numpy as np
-import cv2
+import cv2, sys
 PF_numeric_types = [int, float, np.float16, np.float32, np.float64, np.float128, np.int8, np.int16, np.int32, np.int64, np.uint8, np.uint16, np.uint32, np.uint64]
 
 def motion_correct(mov, max_iters=1, shift_threshold=1., reslice=slice(None,None), in_place=True, verbose=True, compute_kwargs={}, apply_kwargs={}):
@@ -33,13 +33,13 @@ def motion_correct(mov, max_iters=1, shift_threshold=1., reslice=slice(None,None
     all_vals = []
     for it in range(max_iters):
         if verbose:
-            print('Iteration {}'.format(it))
+            print('Iteration {}'.format(it)); sys.stdout.flush()
         template,vals = compute_motion(mov, **compute_kwargs)
         mov = apply_motion_correction(mov, vals, **apply_kwargs)
         maxshifts = np.abs(vals[:,[0,1]].max(axis=0))
         all_vals.append(vals)
         if verbose:
-            print('Shifts: {}'.format(str(maxshifts)))
+            print('Shifts: {}'.format(str(maxshifts))); sys.stdout.flush()
         if np.all(maxshifts < shift_threshold):
             break
 
