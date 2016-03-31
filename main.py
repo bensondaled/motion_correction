@@ -1,7 +1,7 @@
 # Refer to INSTRUCTIONS.txt for details on how to use this mini-package.
 # Remember, whitespace matters in Python, so don't mess with tabs in this file.
 
-import sys, os, time
+import sys, os, time, warnings
 import numpy as np
 from skimage.io import imread, imsave
 from scipy.io import savemat
@@ -61,7 +61,9 @@ print('Motion correction took {:0.3f} seconds.'.format(time.time()-t0)); sys.std
 
 # save out results
 if save_tif:
-    imsave(path_cor, mov_cor)
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        imsave(path_cor, mov_cor)
 if save_vals_func:
     if save_vals_func == savemat:
         vals = dict(vals=vals)
