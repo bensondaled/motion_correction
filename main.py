@@ -30,7 +30,7 @@ max_iters       =   2                   # max number of iterations
 
 # structure params
 compute_params = dict(template=template, max_shift=max_shift, reslice=reslice, resample=resample, symmetrize=symmetrize)
-apply_params = dict(crop=crop)
+apply_params = dict(crop=crop, reslice=reslice)
 correct_params = dict(shift_threshold=shift_threshold, max_iters=max_iters)
 
 # determine job id

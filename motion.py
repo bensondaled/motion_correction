@@ -49,7 +49,7 @@ def motion_correct(mov, max_iters=1, shift_threshold=1., in_place=True, verbose=
     return mov,template,return_vals
 
 
-def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=False, in_place=False):
+def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, reslice=slice(None,None), crop=False, in_place=False):
     """Apply shifts to mov in order to correct motion
 
     Parameters
@@ -60,6 +60,8 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=Fa
         obtained from the function compute_motion, list of [x_shift, y_shift] for each frame. if more than 2 columns, assumes first 2 are the desired ones
     interpolation : def
         interpolation flag for cv2.warpAffine, defaults to cv2.INTER_LINEAR
+    reslice : slice
+        used to reslice movie, example: slice(1,None,2) gives every other frame starting from 2nd frame
     crop : bool / int
         whether to crop image to borders of correction. if True, crops to maximum adjustments. if int, crops that number of pixels off all sides
     in_place : bool
@@ -69,6 +71,8 @@ def apply_motion_correction(mov, shifts, interpolation=cv2.INTER_LINEAR, crop=Fa
     """
     if not in_place:
         mov=mov.copy()
+
+    mov = mov[reslice]
 
     if shifts.dtype.names:
         shifts = shifts[['y_shift','x_shift']].view((float, 2))
